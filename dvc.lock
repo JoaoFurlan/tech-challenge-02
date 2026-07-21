@@ -1,0 +1,307 @@
+schema: '2.0'
+stages:
+  preprocess:
+    cmd: uv run python scripts/pipeline/preprocess.py
+    deps:
+    - path: data/raw/events.csv
+      hash: md5
+      md5: fddaf7c1c6a9df23a726500a08ffdd7e
+      size: 94237913
+    - path: scripts/pipeline/preprocess.py
+      hash: md5
+      md5: f839c04147131784e27f2753c6f84f1f
+      size: 6205
+    - path: src/recsys_ecommerce/preprocessing
+      hash: md5
+      md5: bf0ab0da4c0d487421e0b240762a997b.dir
+      size: 14223
+      nfiles: 5
+    params:
+      configs/model.yaml:
+        eval_negative_samples: 99
+        min_interactions: 3
+        negative_sampling_ratio: 4
+    outs:
+    - path: data/processed/interactions
+      hash: md5
+      md5: 82225ec676af26f6bb093a044a772f39.dir
+      size: 125871022
+      nfiles: 6
+  feature_eng:
+    cmd: uv run python scripts/pipeline/feature_eng.py
+    deps:
+    - path: data/processed/interactions
+      hash: md5
+      md5: 82225ec676af26f6bb093a044a772f39.dir
+      size: 125871022
+      nfiles: 6
+    - path: data/raw/category_tree.csv
+      hash: md5
+      md5: f0e1eb878ae66209004112f6355d7e83
+      size: 14454
+    - path: data/raw/item_properties_part1.csv
+      hash: md5
+      md5: cb43a0682a1af76f1c1b60f9163ae47b
+      size: 484315749
+    - path: data/raw/item_properties_part2.csv
+      hash: md5
+      md5: e74ec953e7b192920b195dfd82dc2a4e
+      size: 408929907
+    - path: scripts/pipeline/feature_eng.py
+      hash: md5
+      md5: 72d34555e091fb68b10374896c93bc78
+      size: 2117
+    - path: src/recsys_ecommerce/features
+      hash: md5
+      md5: dcf0ba7041c09305715cdb8ec4d9e4c2.dir
+      size: 76262
+      nfiles: 10
+    params:
+      configs/model.yaml:
+        winning_feature_set: fe_v4
+    outs:
+    - path: data/processed/fe_v4
+      hash: md5
+      md5: c36dec50cff8f376d592e9041e8502cf.dir
+      size: 297750175
+      nfiles: 6
+  train_baseline:
+    cmd: uv run python scripts/pipeline/train_baseline.py
+    deps:
+    - path: data/processed/fe_v4
+      hash: md5
+      md5: c36dec50cff8f376d592e9041e8502cf.dir
+      size: 297750175
+      nfiles: 6
+    - path: scripts/pipeline/_common.py
+      hash: md5
+      md5: f058b0a861220f514de4f18162acd828
+      size: 6077
+    - path: scripts/pipeline/train_baseline.py
+      hash: md5
+      md5: a146010109fd491e89c3c9371021ca49
+      size: 843
+    - path: src/recsys_ecommerce/models
+      hash: md5
+      md5: 8bb447d464459a26bcc9cd51d62841b7.dir
+      size: 48704
+      nfiles: 16
+    - path: src/recsys_ecommerce/tracking
+      hash: md5
+      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
+      size: 27466
+      nfiles: 4
+    params:
+      configs/model.yaml:
+        logreg_c: 10000.0
+        logreg_max_iter: 1000
+        logreg_solver: lbfgs
+        registered_model_name: recsys_ecommerce
+        winning_feature_set: fe_v4
+    outs:
+    - path: reports/logreg_metrics.json
+      hash: md5
+      md5: 71acd14544146dd2fb4460882a40f019
+      size: 39
+  train_decision_tree:
+    cmd: uv run python scripts/pipeline/train_decision_tree.py
+    deps:
+    - path: data/processed/fe_v4
+      hash: md5
+      md5: c36dec50cff8f376d592e9041e8502cf.dir
+      size: 297750175
+      nfiles: 6
+    - path: scripts/pipeline/_common.py
+      hash: md5
+      md5: f058b0a861220f514de4f18162acd828
+      size: 6077
+    - path: scripts/pipeline/train_decision_tree.py
+      hash: md5
+      md5: 26ab11becf4555534b01f43dd02e115e
+      size: 893
+    - path: src/recsys_ecommerce/models
+      hash: md5
+      md5: f2a76bc7b6da24d5b2c5d3343fe79d48.dir
+      size: 50125
+      nfiles: 17
+    - path: src/recsys_ecommerce/tracking
+      hash: md5
+      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
+      size: 27466
+      nfiles: 4
+    params:
+      configs/model.yaml:
+        decision_tree_max_depth: 4
+        decision_tree_min_samples_leaf: 5
+        decision_tree_min_samples_split: 20
+        registered_model_name: recsys_ecommerce
+        winning_feature_set: fe_v4
+    outs:
+    - path: reports/decision_tree_metrics.json
+      hash: md5
+      md5: ccc3995ca6d5231fd7a15952272aea63
+      size: 39
+  train_xgboost:
+    cmd: uv run python scripts/pipeline/train_xgboost.py
+    deps:
+    - path: data/processed/fe_v4
+      hash: md5
+      md5: c36dec50cff8f376d592e9041e8502cf.dir
+      size: 297750175
+      nfiles: 6
+    - path: scripts/pipeline/_common.py
+      hash: md5
+      md5: f058b0a861220f514de4f18162acd828
+      size: 6077
+    - path: scripts/pipeline/train_xgboost.py
+      hash: md5
+      md5: 2a0364fa8294b841823b95d14595a57f
+      size: 1020
+    - path: src/recsys_ecommerce/models
+      hash: md5
+      md5: f2a76bc7b6da24d5b2c5d3343fe79d48.dir
+      size: 50125
+      nfiles: 17
+    - path: src/recsys_ecommerce/tracking
+      hash: md5
+      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
+      size: 27466
+      nfiles: 4
+    params:
+      configs/model.yaml:
+        registered_model_name: recsys_ecommerce
+        winning_feature_set: fe_v4
+        xgboost_colsample_bytree: 0.5
+        xgboost_learning_rate: 0.005
+        xgboost_max_depth: 6
+        xgboost_n_estimators: 50
+        xgboost_reg_alpha: 0.1
+        xgboost_reg_lambda: 1.0
+        xgboost_subsample: 0.8
+    outs:
+    - path: reports/xgboost_metrics.json
+      hash: md5
+      md5: d44ba0da6caf6db067100aad906107a4
+      size: 39
+  train_lightgbm:
+    cmd: uv run python scripts/pipeline/train_lightgbm.py
+    deps:
+    - path: data/processed/fe_v4
+      hash: md5
+      md5: c36dec50cff8f376d592e9041e8502cf.dir
+      size: 297750175
+      nfiles: 6
+    - path: scripts/pipeline/_common.py
+      hash: md5
+      md5: f058b0a861220f514de4f18162acd828
+      size: 6077
+    - path: scripts/pipeline/train_lightgbm.py
+      hash: md5
+      md5: fedcdc1f7366d233697b9b68c7a59b3a
+      size: 1052
+    - path: src/recsys_ecommerce/models
+      hash: md5
+      md5: f2a76bc7b6da24d5b2c5d3343fe79d48.dir
+      size: 50125
+      nfiles: 17
+    - path: src/recsys_ecommerce/tracking
+      hash: md5
+      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
+      size: 27466
+      nfiles: 4
+    params:
+      configs/model.yaml:
+        lightgbm_colsample_bytree: 0.6
+        lightgbm_learning_rate: 0.005
+        lightgbm_max_depth: 10
+        lightgbm_n_estimators: 100
+        lightgbm_num_leaves: 7
+        lightgbm_reg_alpha: 0.0
+        lightgbm_reg_lambda: 0.0
+        lightgbm_subsample: 1.0
+        registered_model_name: recsys_ecommerce
+        winning_feature_set: fe_v4
+    outs:
+    - path: reports/lightgbm_metrics.json
+      hash: md5
+      md5: 4be37ecb60eee6b106cd45f72cb7a2f7
+      size: 39
+  train_neural_mlp:
+    cmd: uv run python scripts/pipeline/train_neural_mlp.py
+    deps:
+    - path: data/processed/fe_v4
+      hash: md5
+      md5: c36dec50cff8f376d592e9041e8502cf.dir
+      size: 297750175
+      nfiles: 6
+    - path: scripts/pipeline/_common.py
+      hash: md5
+      md5: f058b0a861220f514de4f18162acd828
+      size: 6077
+    - path: scripts/pipeline/train_neural_mlp.py
+      hash: md5
+      md5: 4b5d9d7a3859fb927228df553049d2ef
+      size: 4941
+    - path: src/recsys_ecommerce/models/neural_mlp.py
+      hash: md5
+      md5: 1c64d2e9303768c1bc2788aa8be6283d
+      size: 10521
+    - path: src/recsys_ecommerce/tracking
+      hash: md5
+      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
+      size: 27466
+      nfiles: 4
+    params:
+      configs/model.yaml:
+        mlp_batch_size: 512
+        mlp_dropout: 0.0
+        mlp_eval_every_n_epochs: 5
+        mlp_hidden_dims:
+        - 64
+        mlp_lr: 0.01
+        mlp_max_epochs: 100
+        mlp_patience: 5
+        mlp_weight_decay: 0.0001
+        mlp_weighted_loss: false
+        registered_model_name: recsys_ecommerce
+        winning_feature_set: fe_v4
+    outs:
+    - path: reports/mlp_metrics.json
+      hash: md5
+      md5: 4118b88136af299ae71fd79f5eaa2196
+      size: 39
+  promote_best_model:
+    cmd: uv run python scripts/pipeline/promote_best_model.py
+    deps:
+    - path: reports/decision_tree_metrics.json
+      hash: md5
+      md5: ccc3995ca6d5231fd7a15952272aea63
+      size: 39
+    - path: reports/lightgbm_metrics.json
+      hash: md5
+      md5: 4be37ecb60eee6b106cd45f72cb7a2f7
+      size: 39
+    - path: reports/logreg_metrics.json
+      hash: md5
+      md5: 71acd14544146dd2fb4460882a40f019
+      size: 39
+    - path: reports/mlp_metrics.json
+      hash: md5
+      md5: 4118b88136af299ae71fd79f5eaa2196
+      size: 39
+    - path: reports/xgboost_metrics.json
+      hash: md5
+      md5: d44ba0da6caf6db067100aad906107a4
+      size: 39
+    - path: scripts/pipeline/promote_best_model.py
+      hash: md5
+      md5: 64708a4bd540eb52ef87191354756365
+      size: 2114
+    params:
+      configs/model.yaml:
+        registered_model_name: recsys_ecommerce
+    outs:
+    - path: reports/metrics.json
+      hash: md5
+      md5: 0cda07b3bcd1e04f5719c2167a6d56d2
+      size: 459

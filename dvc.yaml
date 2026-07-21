@@ -1,0 +1,155 @@
+stages:
+  preprocess:
+    cmd: uv run python scripts/pipeline/preprocess.py
+    deps:
+      - scripts/pipeline/preprocess.py
+      - src/recsys_ecommerce/preprocessing
+      - data/raw/events.csv
+    params:
+      - configs/model.yaml:
+          - min_interactions
+          - negative_sampling_ratio
+          - eval_negative_samples
+    outs:
+      - data/processed/interactions
+
+  feature_eng:
+    cmd: uv run python scripts/pipeline/feature_eng.py
+    deps:
+      - scripts/pipeline/feature_eng.py
+      - src/recsys_ecommerce/features
+      - data/processed/interactions
+      - data/raw/item_properties_part1.csv
+      - data/raw/item_properties_part2.csv
+      - data/raw/category_tree.csv
+    params:
+      - configs/model.yaml:
+          - winning_feature_set
+    outs:
+      - data/processed/fe_v4
+
+  train_baseline:
+    cmd: uv run python scripts/pipeline/train_baseline.py
+    deps:
+      - scripts/pipeline/train_baseline.py
+      - scripts/pipeline/_common.py
+      - src/recsys_ecommerce/models
+      - src/recsys_ecommerce/tracking
+      - data/processed/fe_v4
+    params:
+      - configs/model.yaml:
+          - winning_feature_set
+          - logreg_c
+          - logreg_solver
+          - logreg_max_iter
+          - registered_model_name
+    outs:
+      - reports/logreg_metrics.json:
+          cache: false
+
+  train_decision_tree:
+    cmd: uv run python scripts/pipeline/train_decision_tree.py
+    deps:
+      - scripts/pipeline/train_decision_tree.py
+      - scripts/pipeline/_common.py
+      - src/recsys_ecommerce/models
+      - src/recsys_ecommerce/tracking
+      - data/processed/fe_v4
+    params:
+      - configs/model.yaml:
+          - winning_feature_set
+          - decision_tree_max_depth
+          - decision_tree_min_samples_split
+          - decision_tree_min_samples_leaf
+          - registered_model_name
+    outs:
+      - reports/decision_tree_metrics.json:
+          cache: false
+
+  train_xgboost:
+    cmd: uv run python scripts/pipeline/train_xgboost.py
+    deps:
+      - scripts/pipeline/train_xgboost.py
+      - scripts/pipeline/_common.py
+      - src/recsys_ecommerce/models
+      - src/recsys_ecommerce/tracking
+      - data/processed/fe_v4
+    params:
+      - configs/model.yaml:
+          - winning_feature_set
+          - xgboost_max_depth
+          - xgboost_learning_rate
+          - xgboost_n_estimators
+          - xgboost_subsample
+          - xgboost_colsample_bytree
+          - xgboost_reg_alpha
+          - xgboost_reg_lambda
+          - registered_model_name
+    outs:
+      - reports/xgboost_metrics.json:
+          cache: false
+
+  train_lightgbm:
+    cmd: uv run python scripts/pipeline/train_lightgbm.py
+    deps:
+      - scripts/pipeline/train_lightgbm.py
+      - scripts/pipeline/_common.py
+      - src/recsys_ecommerce/models
+      - src/recsys_ecommerce/tracking
+      - data/processed/fe_v4
+    params:
+      - configs/model.yaml:
+          - winning_feature_set
+          - lightgbm_num_leaves
+          - lightgbm_max_depth
+          - lightgbm_learning_rate
+          - lightgbm_n_estimators
+          - lightgbm_subsample
+          - lightgbm_colsample_bytree
+          - lightgbm_reg_alpha
+          - lightgbm_reg_lambda
+          - registered_model_name
+    outs:
+      - reports/lightgbm_metrics.json:
+          cache: false
+
+  train_neural_mlp:
+    cmd: uv run python scripts/pipeline/train_neural_mlp.py
+    deps:
+      - scripts/pipeline/train_neural_mlp.py
+      - scripts/pipeline/_common.py
+      - src/recsys_ecommerce/models/neural_mlp.py
+      - src/recsys_ecommerce/tracking
+      - data/processed/fe_v4
+    params:
+      - configs/model.yaml:
+          - winning_feature_set
+          - mlp_hidden_dims
+          - mlp_dropout
+          - mlp_lr
+          - mlp_weight_decay
+          - mlp_batch_size
+          - mlp_max_epochs
+          - mlp_patience
+          - mlp_weighted_loss
+          - mlp_eval_every_n_epochs
+          - registered_model_name
+    outs:
+      - reports/mlp_metrics.json:
+          cache: false
+
+  promote_best_model:
+    cmd: uv run python scripts/pipeline/promote_best_model.py
+    deps:
+      - scripts/pipeline/promote_best_model.py
+      - reports/logreg_metrics.json
+      - reports/decision_tree_metrics.json
+      - reports/xgboost_metrics.json
+      - reports/lightgbm_metrics.json
+      - reports/mlp_metrics.json
+    params:
+      - configs/model.yaml:
+          - registered_model_name
+    metrics:
+      - reports/metrics.json:
+          cache: false

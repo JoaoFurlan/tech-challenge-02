@@ -1,0 +1,62 @@
+# Hiperparâmetros de treino/avaliação, vencedores das buscas aleatórias
+# reais (scripts/pipeline/tune_tabular_models.py e tune_neural_mlp.py) --
+# não mais os hiperparâmetros originais do sandbox. Ver docs/decisoes-tecnicas.md
+# (decisão 8) e docs/model-card.md ("Como os números mudaram") para o histórico.
+
+# --- Protocolo de split/avaliação (idêntico ao do sandbox) ---
+min_interactions: 3
+negative_sampling_ratio: 4
+eval_negative_samples: 99
+top_k: 10
+registered_model_name: recsys_ecommerce
+
+# --- Feature set vencedor -- decisão manual, revisada em
+# scripts/experiments/run_fe_comparison.py. NÃO editar à mão -- trocar via
+# `uv run python scripts/pipeline/promote_feature_set.py <nome>`, que também
+# atualiza os caminhos correspondentes em dvc.yaml. ---
+winning_feature_set: fe_v4
+
+# --- Regressão logística (test_ndcg@10 = 0.6479, trial-005 de tune_tabular_models.py) ---
+logreg_c: 10000.0
+logreg_solver: lbfgs
+logreg_max_iter: 1000
+
+# --- Árvore de decisão (test_ndcg@10 = 0.4802, trial-002) ---
+decision_tree_max_depth: 4
+decision_tree_min_samples_split: 20
+decision_tree_min_samples_leaf: 5
+
+# --- XGBoost (test_ndcg@10 = 0.5951, trial-007) ---
+xgboost_max_depth: 6
+xgboost_learning_rate: 0.005
+xgboost_n_estimators: 50
+xgboost_subsample: 0.8
+xgboost_colsample_bytree: 0.5
+xgboost_reg_alpha: 0.1
+xgboost_reg_lambda: 1.0
+
+# --- LightGBM (test_ndcg@10 = 0.6502, trial-009 -- modelo tabular vencedor geral) ---
+lightgbm_num_leaves: 7
+lightgbm_max_depth: 10
+lightgbm_learning_rate: 0.005
+lightgbm_n_estimators: 100
+lightgbm_subsample: 1.0
+lightgbm_colsample_bytree: 0.6
+lightgbm_reg_alpha: 0.0
+lightgbm_reg_lambda: 0.0
+
+# --- MLP (test_ndcg@10 = 0.6940, trial-007 do braço "control" de
+# tune_neural_mlp.py -- vencedor geral entre os 5 modelos. Achado
+# interessante: este trial venceu SEM pos_weight/patience=10 (as duas
+# melhorias que a busca testava) -- a arquitetura/learning_rate amostrados
+# é que fizeram a diferença aqui, não essas duas mudanças específicas. O
+# braço "treatment" ainda tem trials pendentes, ver docs/model-card.md). ---
+mlp_hidden_dims: [64]
+mlp_dropout: 0.0
+mlp_lr: 0.01
+mlp_weight_decay: 0.0001
+mlp_batch_size: 512
+mlp_max_epochs: 100
+mlp_patience: 5
+mlp_weighted_loss: false
+mlp_eval_every_n_epochs: 5

@@ -1,0 +1,4 @@
+# Normaliza quebras de linha para LF em todo o repositório, independente do
+# core.autocrlf configurado na máquina - evita que checkouts em Windows
+# corrompam hashes rastreados pelo DVC (dvc.lock) para arquivos de texto.
+* text=auto eol=lf

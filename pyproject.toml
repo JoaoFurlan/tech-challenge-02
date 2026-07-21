@@ -1,0 +1,112 @@
+[project]
+name = "recsys-ecommerce"
+version = "0.1.0"
+description = "Sistema de recomendação de produtos para e-commerce baseado em comportamento de navegação"
+authors = [
+    { name = "João Furlan", email = "joao.fuurlan@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "dvc[s3]>=3.67.1",
+    "lightgbm>=4.6.0",
+    "matplotlib>=3.11.0",
+    "mlflow>=3.14.0",
+    "pandas>=2.3.3",
+    "pyarrow>=19.0.0",
+    "pydantic-settings>=2.14.2",
+    "scikit-learn>=1.9.0",
+    "torch>=2.12.1",
+    "xgboost>=3.2.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+    "jupyter>=1.1.1",
+    "mypy>=2.2.0",
+    "pandas-stubs>=3.0.3.260530",
+    "pre-commit>=4.6.0",
+    "pytest>=9.1.1",
+    "ruff>=0.15.20",
+    "types-pyyaml>=6.0.12.20260518",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src"]
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "N",   # pep8-naming
+    "D",   # pydocstyle (Google docstrings)
+    "ANN", # flake8-annotations (type hints)
+]
+ignore = [
+    "D203",  # incompatible with D211 (blank line before class docstring)
+    "D213",  # incompatible with D212 (multi-line summary position)
+    "N803",  # X/y é a convenção universal do sklearn para matriz de features/rótulo
+    "N806",  # idem, para variáveis locais
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "ANN"]
+"__init__.py" = ["D104"]
+"notebooks/**" = ["D", "ANN", "E501"]
+"scripts/experiments/**" = ["D103"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests", "scripts"]
+# Relativo à raiz do repo git (o hook do pre-commit roda com cwd lá, via
+# --config-file=new_repo/pyproject.toml) -- NÃO adicionar "src" (relativo a
+# new_repo/) aqui também: o projeto raiz (fora de new_repo/) tem seu próprio
+# pacote `recsys_ecommerce` com o MESMO nome mas uma API antiga incompatível
+# -- com os dois no path, o mypy pode resolver o pacote errado (achado na
+# prática: TabularClassifierModel/evaluate_model do projeto raiz "vazando"
+# aqui). `uv run mypy` não precisa disto -- resolve via install editável.
+mypy_path = ["new_repo/src"]
+
+[[tool.mypy.overrides]]
+module = "sklearn.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "scipy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "xgboost.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "lightgbm.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "scripts"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

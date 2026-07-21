@@ -1,0 +1,31 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.20
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.3.0
+    hooks:
+      - id: mypy
+        # Versoes fixadas (nao so um lower-bound) para casar exatamente com o
+        # venv real do projeto (uv.lock) -- o ambiente isolado deste hook usa
+        # um resolver de dependencias proprio, e uma versao diferente de
+        # qualquer um destes pacotes pode ver os stubs de forma diferente,
+        # gerando falsos positivos/negativos que nao acontecem em `uv run mypy`.
+        additional_dependencies:
+          - dvc[s3]==3.67.1
+          - lightgbm==4.7.0
+          - matplotlib==3.11.1
+          - mlflow==3.14.0
+          - pandas==2.3.3
+          - pandas-stubs
+          - pyarrow==24.0.0
+          - pydantic-settings==2.14.2
+          - pytest==9.1.1
+          - scikit-learn==1.9.0
+          - torch==2.13.0
+          - xgboost==3.2.0
+          - --extra-index-url=https://download.pytorch.org/whl/cpu

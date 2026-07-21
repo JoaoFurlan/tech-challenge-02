@@ -1,0 +1,35 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg-info
+build/
+dist/
+
+# --- Ambiente virtual (uv) ---
+.venv/
+
+# --- Variáveis de ambiente ---
+.env
+
+# --- Dados brutos (versionados via DVC, não via git - ver data/raw/.gitignore) ---
+# --- Dados processados pelo pipeline (artefatos intermediários, não código) ---
+/data/processed/
+
+# --- Modelos treinados (artefatos, não código) ---
+/models/*
+!/models/.gitkeep
+
+# --- MLflow (tracking store e artefatos locais) ---
+mlruns/
+mlartifacts/
+mlflow-data/
+
+# --- Caches de ferramentas ---
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# --- Sistema operacional ---
+.DS_Store
+Thumbs.db

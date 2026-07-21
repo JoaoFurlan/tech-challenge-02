@@ -1,0 +1,6 @@
+[core]
+    remote = s3_remote
+['remote "s3_remote"']
+    url = s3://recsys-ecommerce-dvc-tech-challenge-02/dvcstore
+    region = us-east-1
+    allow_anonymous_login = true

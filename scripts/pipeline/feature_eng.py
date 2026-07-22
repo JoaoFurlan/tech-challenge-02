@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+from _common import log_stage_timing
 
 from recsys_ecommerce.config import load_training_config, settings
 from recsys_ecommerce.features.pipeline import FEATURE_SET_BUILDERS, InteractionTables
@@ -50,8 +51,9 @@ def run_feature_eng(data_dir: Path, feature_set_name: str) -> dict[str, pd.DataF
 
 def main() -> None:
     """Ponto de entrada do estágio `feature_eng` do `dvc.yaml`."""
-    cfg = load_training_config()
-    run_feature_eng(settings.data_dir, cfg.winning_feature_set)
+    with log_stage_timing("feature_eng"):
+        cfg = load_training_config()
+        run_feature_eng(settings.data_dir, cfg.winning_feature_set)
 
 
 if __name__ == "__main__":

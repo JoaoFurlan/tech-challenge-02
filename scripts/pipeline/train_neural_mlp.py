@@ -16,7 +16,12 @@ import sys
 
 import matplotlib.pyplot as plt
 import mlflow
-from _common import EXPERIMENT_NAME, REPORTS_DIR, load_winning_feature_set
+from _common import (
+    EXPERIMENT_NAME,
+    REPORTS_DIR,
+    load_winning_feature_set,
+    log_stage_timing,
+)
 from matplotlib.figure import Figure
 
 from recsys_ecommerce.config import load_training_config, settings
@@ -123,31 +128,32 @@ def main() -> None:
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
     mlflow.set_experiment(EXPERIMENT_NAME)
 
-    cfg = load_training_config()
-    feature_set = load_winning_feature_set()
-    tables = FeaturedTables.load(settings.data_dir, feature_set)
+    with log_stage_timing("train_neural_mlp"):
+        cfg = load_training_config()
+        feature_set = load_winning_feature_set()
+        tables = FeaturedTables.load(settings.data_dir, feature_set)
 
-    tuned = NeuralMLPModel(
-        hidden_dims=tuple(cfg.mlp_hidden_dims),
-        dropout=cfg.mlp_dropout,
-        lr=cfg.mlp_lr,
-        weight_decay=cfg.mlp_weight_decay,
-        batch_size=cfg.mlp_batch_size,
-        max_epochs=cfg.mlp_max_epochs,
-        patience=cfg.mlp_patience,
-        weighted_loss=cfg.mlp_weighted_loss,
-        eval_every_n_epochs=cfg.mlp_eval_every_n_epochs,
-        seed=settings.random_seed,
-    )
+        tuned = NeuralMLPModel(
+            hidden_dims=tuple(cfg.mlp_hidden_dims),
+            dropout=cfg.mlp_dropout,
+            lr=cfg.mlp_lr,
+            weight_decay=cfg.mlp_weight_decay,
+            batch_size=cfg.mlp_batch_size,
+            max_epochs=cfg.mlp_max_epochs,
+            patience=cfg.mlp_patience,
+            weighted_loss=cfg.mlp_weighted_loss,
+            eval_every_n_epochs=cfg.mlp_eval_every_n_epochs,
+            seed=settings.random_seed,
+        )
 
-    tuned_ndcg = _train_and_log_trial("tuned", tuned, feature_set, tables)
+        tuned_ndcg = _train_and_log_trial("tuned", tuned, feature_set, tables)
 
-    register_best_trial(EXPERIMENT_NAME, "mlp", cfg.registered_model_name)
+        register_best_trial(EXPERIMENT_NAME, "mlp", cfg.registered_model_name)
 
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    (REPORTS_DIR / "mlp_metrics.json").write_text(
-        json.dumps({"test_ndcg": tuned_ndcg}, indent=2)
-    )
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        (REPORTS_DIR / "mlp_metrics.json").write_text(
+            json.dumps({"test_ndcg": tuned_ndcg}, indent=2)
+        )
 
 
 if __name__ == "__main__":

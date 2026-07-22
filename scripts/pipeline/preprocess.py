@@ -15,6 +15,7 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
+from _common import log_stage_timing
 
 from recsys_ecommerce.config import load_training_config, settings
 from recsys_ecommerce.preprocessing.interaction import (
@@ -180,14 +181,15 @@ def run_preprocess(
 
 def main() -> None:
     """Ponto de entrada do estágio `preprocess` do `dvc.yaml`."""
-    cfg = load_training_config()
-    run_preprocess(
-        data_dir=settings.data_dir,
-        min_interactions=cfg.min_interactions,
-        negative_sampling_ratio=cfg.negative_sampling_ratio,
-        eval_negative_samples=cfg.eval_negative_samples,
-        seed=settings.random_seed,
-    )
+    with log_stage_timing("preprocess"):
+        cfg = load_training_config()
+        run_preprocess(
+            data_dir=settings.data_dir,
+            min_interactions=cfg.min_interactions,
+            negative_sampling_ratio=cfg.negative_sampling_ratio,
+            eval_negative_samples=cfg.eval_negative_samples,
+            seed=settings.random_seed,
+        )
 
 
 if __name__ == "__main__":

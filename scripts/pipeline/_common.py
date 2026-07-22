@@ -16,8 +16,11 @@ treino sem mudar a decisão final. Ver decisão correspondente em
 
 import json
 import logging
-import os
 import sys
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -46,19 +49,36 @@ REPORTS_DIR = Path("reports")
 if (reconfigure := getattr(sys.stdout, "reconfigure", None)) is not None:
     reconfigure(encoding="utf-8")
 
-# joblib (usado internamente pelo LightGBM) tenta descobrir o numero de
-# nucleos fisicos via um subprocesso do Windows que nao existe neste
-# ambiente, falha, e imprime um UserWarning antes de cair pro numero de
-# nucleos logicos -- setar a variavel antes evita a tentativa (e o aviso)
-# de vez, ao inves de so esconder o texto.
-os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(os.cpu_count() or 1))
-
 # Silencia o ruido cosmetico que o MLflow imprime a cada log_model() --
 # resolucao de dependencias via uv export, aviso de indice privado, aviso de
 # seguranca do formato pickle (ja e uma escolha deliberada pro MLP, ver
 # NeuralMLPModel) etc. Nao muda nenhum comportamento, so o nivel de log;
 # erros de verdade (logging.ERROR ou acima) continuam aparecendo.
 logging.getLogger("mlflow").setLevel(logging.ERROR)
+
+
+@contextmanager
+def log_stage_timing(stage_name: str) -> Iterator[None]:
+    """Imprime data/hora de início e fim (+ duração) de um trecho do script.
+
+    Não é um substituto do timestamp que o MLflow já grava em cada run --
+    serve pra dar visibilidade no console de quanto tempo cada estágio (ou,
+    na busca pesada, cada família de modelo) está levando, sem precisar
+    estimar pelos horários espalhados no log como foi feito manualmente
+    numa rodada anterior.
+
+    Args:
+        stage_name: Nome a exibir (ex.: `"train_lightgbm"`, `"xgboost-fe_v4"`).
+    """
+    start = datetime.now()
+    print(f"[{start:%Y-%m-%d %H:%M:%S}] iniciando {stage_name}")
+    t0 = time.monotonic()
+    try:
+        yield
+    finally:
+        elapsed = timedelta(seconds=round(time.monotonic() - t0))
+        end = datetime.now()
+        print(f"[{end:%Y-%m-%d %H:%M:%S}] {stage_name} concluído em {elapsed}")
 
 
 def load_winning_feature_set() -> str:
@@ -200,17 +220,18 @@ def run_tuned(model_family: str, tuned_model: RecommenderModel) -> None:
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
     mlflow.set_experiment(EXPERIMENT_NAME)
 
-    feature_set = load_winning_feature_set()
-    tables = FeaturedTables.load(settings.data_dir, feature_set)
+    with log_stage_timing(f"train_{model_family}"):
+        feature_set = load_winning_feature_set()
+        tables = FeaturedTables.load(settings.data_dir, feature_set)
 
-    _, tuned_ndcg = train_and_log_trial(
-        model_family, "tuned", tuned_model, feature_set, tables
-    )
+        _, tuned_ndcg = train_and_log_trial(
+            model_family, "tuned", tuned_model, feature_set, tables
+        )
 
-    cfg = load_training_config()
-    register_best_trial(EXPERIMENT_NAME, model_family, cfg.registered_model_name)
+        cfg = load_training_config()
+        register_best_trial(EXPERIMENT_NAME, model_family, cfg.registered_model_name)
 
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    (REPORTS_DIR / f"{model_family}_metrics.json").write_text(
-        json.dumps({"test_ndcg": tuned_ndcg}, indent=2)
-    )
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        (REPORTS_DIR / f"{model_family}_metrics.json").write_text(
+            json.dumps({"test_ndcg": tuned_ndcg}, indent=2)
+        )

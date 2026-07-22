@@ -34,10 +34,9 @@ import sys
 from typing import Any
 
 import mlflow
-from _common import EXPERIMENT_NAME, load_winning_feature_set
+from _common import EXPERIMENT_NAME, load_featured_tables, load_winning_feature_set
 
 from recsys_ecommerce.config import load_training_config, settings
-from recsys_ecommerce.features.pipeline import FeaturedTables
 from recsys_ecommerce.models.neural_mlp import NeuralMLPModel
 from recsys_ecommerce.tracking.mlflow_organization import (
     register_best_trial,
@@ -67,7 +66,7 @@ def main() -> None:
     mlflow.set_experiment(EXPERIMENT_NAME)
 
     feature_set = load_winning_feature_set()
-    tables = FeaturedTables.load(settings.data_dir, feature_set)
+    tables = load_featured_tables(feature_set)
 
     run_hyperparameter_search(
         search_name="mlp-fe_v4-baseline",
@@ -88,6 +87,7 @@ def main() -> None:
             "max_epochs": 100,
             "patience": 5,
             "weighted_loss": False,
+            "eval_every_n_epochs": 10,
             "seed": 42,
         },
         seed=42,
@@ -112,6 +112,7 @@ def main() -> None:
             "max_epochs": 100,
             "patience": 10,
             "weighted_loss": True,
+            "eval_every_n_epochs": 10,
             "seed": 42,
         },
         seed=42,

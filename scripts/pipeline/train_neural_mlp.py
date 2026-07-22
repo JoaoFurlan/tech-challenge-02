@@ -76,9 +76,11 @@ def _train_and_log_trial(
         )
         mlflow.log_params(model.get_params())
 
-        model.set_periodic_eval(
-            tables.val, tables.test, tables.feature_columns, tables.all_items
-        )
+        # Sem set_periodic_eval aqui de propósito: essa é a etapa de reprodução
+        # (hiperparâmetros já decididos, não uma busca), então a reavaliação de
+        # ranking a cada N épocas -- útil pra acompanhar uma busca em andamento --
+        # só custaria tempo sem mudar nada (early stopping usa só a loss interna,
+        # nunca a reavaliação periódica; ver NeuralMLPClassifier._train_loop).
         model.fit(X_train, y_train)
 
         train_metrics = evaluate_model(

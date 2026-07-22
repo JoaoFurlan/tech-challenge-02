@@ -20,10 +20,9 @@ import sys
 from typing import Any
 
 import mlflow
-from _common import EXPERIMENT_NAME, load_winning_feature_set
+from _common import EXPERIMENT_NAME, load_featured_tables, load_winning_feature_set
 
 from recsys_ecommerce.config import load_training_config, settings
-from recsys_ecommerce.features.pipeline import FeaturedTables
 from recsys_ecommerce.models.decision_tree_model import DecisionTreeModel
 from recsys_ecommerce.models.lightgbm_model import LightGBMModel
 from recsys_ecommerce.models.sklearn_baseline import LogisticRegressionBaseline
@@ -93,7 +92,7 @@ def main() -> None:
     mlflow.set_experiment(EXPERIMENT_NAME)
 
     feature_set = load_winning_feature_set()
-    tables = FeaturedTables.load(settings.data_dir, feature_set)
+    tables = load_featured_tables(feature_set)
     cfg = load_training_config()
 
     for model_family, model_class, search_space, fixed_params in SEARCH_SPECS:

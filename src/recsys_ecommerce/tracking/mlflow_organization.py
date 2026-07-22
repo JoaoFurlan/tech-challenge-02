@@ -192,6 +192,15 @@ def run_hyperparameter_search(
     individualmente (escopados por `search_name` via `tuning_target`) e
     continua do ponto certo.
 
+    `model.fit()` roda dentro da run ativa, e `set_periodic_eval` é chamado
+    antes -- modelos que suportam progresso intermediário a custo baixo
+    (`NeuralMLPModel`: métricas de ranking a cada N épocas; `XGBoostModel`/
+    `LightGBMModel`: log-loss por rodada de boosting, via `eval_set` nativo)
+    logam essas curvas no MLflow; os demais ignoram a chamada (no-op).
+    Só usado aqui (busca pesada) -- os scripts leves (`train_*.py`) não
+    chamam `set_periodic_eval`, para não pagar esse custo numa reprodução
+    onde os hiperparâmetros já são conhecidos.
+
     Args:
         search_name: Identificador desta busca (ex.: `"mlp-fe_v4-tuned"`) --
             cada trial se chama `{search_name}-trial-000` etc.
@@ -243,13 +252,6 @@ def run_hyperparameter_search(
 
         full_params = {**fixed_params, **params}
         model = model_class(**full_params)
-        model.fit(X_train, y_train)
-
-        train_metrics = evaluate_model(
-            model, train_eval_feat, feature_columns, all_items
-        )
-        val_metrics = evaluate_model(model, val_feat, feature_columns, all_items)
-        test_metrics = evaluate_model(model, test_feat, feature_columns, all_items)
 
         with mlflow.start_run(run_name=trial_name) as trial_run:
             mlflow.set_tags(
@@ -261,9 +263,34 @@ def run_hyperparameter_search(
                 }
             )
             mlflow.log_params(full_params)
+
+            # fit() dentro da run ativa -- alguns modelos (NeuralMLPModel,
+            # XGBoostModel, LightGBMModel) logam progresso intermediario a
+            # custo baixo quando ha uma run ativa no momento do treino; os
+            # que nao suportam isso (LogisticRegressionBaseline,
+            # DecisionTreeModel) ignoram a chamada (no-op na classe base).
+            model.set_periodic_eval(val_feat, test_feat, feature_columns, all_items)
+            model.fit(X_train, y_train)
+
+            train_metrics = evaluate_model(
+                model, train_eval_feat, feature_columns, all_items
+            )
+            val_metrics = evaluate_model(model, val_feat, feature_columns, all_items)
+            test_metrics = evaluate_model(model, test_feat, feature_columns, all_items)
+
             mlflow.log_metrics({f"train_{m}": v for m, v in train_metrics.items()})
             mlflow.log_metrics({f"val_{m}": v for m, v in val_metrics.items()})
             mlflow.log_metrics({f"test_{m}": v for m, v in test_metrics.items()})
+
+            n_epochs_trained = getattr(
+                model.underlying_estimator, "n_epochs_trained_", None
+            )
+            if n_epochs_trained is not None:
+                mlflow.log_metric("n_epochs_trained", n_epochs_trained)
+            pos_weight = getattr(model.underlying_estimator, "pos_weight_", None)
+            if pos_weight is not None:
+                mlflow.log_metric("pos_weight", pos_weight)
+
             log_model_artifact(model)
 
         results.append((trial_run.info.run_id, test_metrics["ndcg"]))

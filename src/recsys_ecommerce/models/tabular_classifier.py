@@ -46,6 +46,24 @@ class TabularClassifierModel(RecommenderModel):
         get_params = getattr(self._clf, "get_params", None)
         return dict(get_params()) if get_params is not None else {}
 
+    def set_periodic_eval(
+        self,
+        val_feat: pd.DataFrame,
+        test_feat: pd.DataFrame,
+        feature_columns: list[str],
+        all_items: np.ndarray,
+    ) -> Self:
+        """Liga reavaliação periódica durante o treino, se a subclasse suportar.
+
+        No-op por padrão. Sobrescrita por modelos que conseguem logar
+        progresso intermediário no MLflow a custo baixo (`XGBoostModel`/
+        `LightGBMModel`: log-loss por rodada de boosting, via `eval_set`
+        nativo; `NeuralMLPModel`: métricas de ranking a cada N épocas). Não
+        faz nada para modelos sem essa noção (`LogisticRegressionBaseline`,
+        `DecisionTreeModel`) -- chamar isto neles é seguro e gratuito.
+        """
+        return self
+
     def fit(self, X: pd.DataFrame, y: pd.Series) -> Self:
         """Treina o classificador. Ver `RecommenderModel.fit`."""
         self._fit_estimator(X, y)

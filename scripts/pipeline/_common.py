@@ -15,6 +15,8 @@ treino sem mudar a decisão final. Ver decisão correspondente em
 """
 
 import json
+import logging
+import os
 import sys
 from pathlib import Path
 
@@ -44,6 +46,20 @@ REPORTS_DIR = Path("reports")
 if (reconfigure := getattr(sys.stdout, "reconfigure", None)) is not None:
     reconfigure(encoding="utf-8")
 
+# joblib (usado internamente pelo LightGBM) tenta descobrir o numero de
+# nucleos fisicos via um subprocesso do Windows que nao existe neste
+# ambiente, falha, e imprime um UserWarning antes de cair pro numero de
+# nucleos logicos -- setar a variavel antes evita a tentativa (e o aviso)
+# de vez, ao inves de so esconder o texto.
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(os.cpu_count() or 1))
+
+# Silencia o ruido cosmetico que o MLflow imprime a cada log_model() --
+# resolucao de dependencias via uv export, aviso de indice privado, aviso de
+# seguranca do formato pickle (ja e uma escolha deliberada pro MLP, ver
+# NeuralMLPModel) etc. Nao muda nenhum comportamento, so o nivel de log;
+# erros de verdade (logging.ERROR ou acima) continuam aparecendo.
+logging.getLogger("mlflow").setLevel(logging.ERROR)
+
 
 def load_winning_feature_set() -> str:
     """Lê o `feature_set` vencedor de `configs/model.yaml:winning_feature_set`.
@@ -57,6 +73,44 @@ def load_winning_feature_set() -> str:
         O nome do feature set vencedor (ex.: `"fe_v4"`).
     """
     return load_training_config().winning_feature_set
+
+
+def load_featured_tables(feature_set: str) -> FeaturedTables:
+    """Carrega as tabelas de `feature_set`, gerando os dados a partir do zero se preciso.
+
+    Usado pelos scripts de tunagem pesada (`tune_tabular_models.py`,
+    `tune_neural_mlp.py`) para não depender de `dvc repro` já ter rodado --
+    um clone novo que só quer rodar a busca pesada, sem nunca ter passado
+    pelo pipeline leve, ainda funciona: roda `preprocess` e/ou `feature_eng`
+    primeiro, só se os dados ainda não existirem em disco.
+
+    Args:
+        feature_set: Nome do feature set a carregar (ex.: `"fe_v4"`).
+
+    Returns:
+        As 4 tabelas, as colunas de features e o universo de itens.
+    """
+    from feature_eng import run_feature_eng
+    from preprocess import run_preprocess
+
+    interactions_dir = settings.data_dir / "processed" / "interactions"
+    if not interactions_dir.exists():
+        print(f"'{interactions_dir}' não existe -- rodando preprocess.py primeiro.")
+        cfg = load_training_config()
+        run_preprocess(
+            data_dir=settings.data_dir,
+            min_interactions=cfg.min_interactions,
+            negative_sampling_ratio=cfg.negative_sampling_ratio,
+            eval_negative_samples=cfg.eval_negative_samples,
+            seed=settings.random_seed,
+        )
+
+    feature_dir = settings.data_dir / "processed" / feature_set
+    if not feature_dir.exists():
+        print(f"'{feature_dir}' não existe -- rodando feature_eng.py primeiro.")
+        run_feature_eng(settings.data_dir, feature_set)
+
+    return FeaturedTables.load(settings.data_dir, feature_set)
 
 
 def train_and_log_trial(

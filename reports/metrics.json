@@ -1,27 +1,27 @@
 [
   {
     "model_family": "mlp",
-    "version": "9",
+    "version": "5",
     "test_ndcg": 0.693974
   },
   {
     "model_family": "lightgbm",
-    "version": "8",
+    "version": "4",
     "test_ndcg": 0.65025
   },
   {
     "model_family": "xgboost",
-    "version": "7",
+    "version": "3",
     "test_ndcg": 0.595069
   },
   {
     "model_family": "decision_tree",
-    "version": "6",
+    "version": "2",
     "test_ndcg": 0.480176
   },
   {
     "model_family": "logreg",
-    "version": "5",
+    "version": "1",
     "test_ndcg": 0.647878
   }
 ]

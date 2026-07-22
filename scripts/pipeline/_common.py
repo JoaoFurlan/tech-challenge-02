@@ -2,11 +2,16 @@
 
 Não é um estágio do `dvc.yaml` em si — helper reaproveitado por
 `train_baseline.py`/`train_decision_tree.py`/`train_xgboost.py`/`train_lightgbm.py`.
-Cada um roda 2 trials flat (`baseline`, hiperparâmetros default; `tuned`, os
-vencedores de `configs/model.yaml`) sobre o `feature_set` vencedor
-(`configs/model.yaml:winning_feature_set`, decisão manual trocada via
-`scripts/pipeline/promote_feature_set.py`), e registra o melhor dos dois no
-Model Registry -- sem categorias/nesting, sem retreino separado.
+Cada um roda 1 trial flat (`tuned`, os vencedores de `configs/model.yaml`)
+sobre o `feature_set` vencedor (`configs/model.yaml:winning_feature_set`,
+decisão manual trocada via `scripts/pipeline/promote_feature_set.py`), e
+registra o resultado no Model Registry -- sem categorias/nesting, sem
+retreino separado.
+
+Não roda mais um trial `baseline` (hiperparâmetros default) -- em todos os
+casos observados o `tuned` já vencia, então o baseline só consumia tempo de
+treino sem mudar a decisão final. Ver decisão correspondente em
+`docs/decisoes-tecnicas.md`.
 """
 
 import json
@@ -131,14 +136,11 @@ def train_and_log_trial(
     return run.info.run_id, test_metrics["ndcg"]
 
 
-def run_baseline_and_tuned(
-    model_family: str, baseline_model: RecommenderModel, tuned_model: RecommenderModel
-) -> None:
-    """Roda os trials `baseline` e `tuned` de uma família e registra o melhor.
+def run_tuned(model_family: str, tuned_model: RecommenderModel) -> None:
+    """Roda o trial `tuned` de uma família e registra o candidato no Model Registry.
 
     Args:
         model_family: Nome da família de modelo (ex.: `"logreg"`).
-        baseline_model: Instância com hiperparâmetros default (não tunados).
         tuned_model: Instância com os hiperparâmetros vencedores (`configs/model.yaml`).
     """
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
@@ -147,18 +149,14 @@ def run_baseline_and_tuned(
     feature_set = load_winning_feature_set()
     tables = FeaturedTables.load(settings.data_dir, feature_set)
 
-    _, baseline_ndcg = train_and_log_trial(
-        model_family, "baseline", baseline_model, feature_set, tables
-    )
     _, tuned_ndcg = train_and_log_trial(
         model_family, "tuned", tuned_model, feature_set, tables
     )
-    best_ndcg = max(baseline_ndcg, tuned_ndcg)
 
     cfg = load_training_config()
     register_best_trial(EXPERIMENT_NAME, model_family, cfg.registered_model_name)
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     (REPORTS_DIR / f"{model_family}_metrics.json").write_text(
-        json.dumps({"test_ndcg": best_ndcg}, indent=2)
+        json.dumps({"test_ndcg": tuned_ndcg}, indent=2)
     )

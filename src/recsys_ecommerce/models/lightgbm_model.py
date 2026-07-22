@@ -1,5 +1,6 @@
 """LightGBM sobre as features tabulares (`fe_v4`)."""
 
+import os
 from typing import Self
 
 import mlflow
@@ -23,6 +24,14 @@ class LightGBMModel(TabularClassifierModel):
                 `random_state`).
         """
         kwargs.setdefault("verbosity", -1)
+        # Sem isso, n_jobs fica None e o LightGBM resolve o numero de threads
+        # chamando joblib com only_physical_cores=True -- no Windows, essa
+        # deteccao tenta um subprocesso que nao existe neste ambiente, falha,
+        # e imprime um UserWarning antes de cair pro numero de nucleos
+        # logicos. Setar n_jobs de propósito evita a deteccao (e o aviso) de
+        # vez, ao inves de so esconder o texto (ver lightgbm/sklearn.py,
+        # `_process_n_jobs`: só entra nesse caminho quando `n_jobs is None`).
+        kwargs.setdefault("n_jobs", os.cpu_count() or 1)
         # LGBMClassifier declara parametros tipados individualmente nos stubs;
         # **kwargs generico (o mesmo padrao dos outros modelos) nao type-checka
         # contra isso, mas e valido em runtime.

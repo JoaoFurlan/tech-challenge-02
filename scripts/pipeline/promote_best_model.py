@@ -1,11 +1,17 @@
-"""Última etapa do pipeline DVC: promove o melhor modelo a Production.
+"""Última etapa do pipeline DVC: promove o melhor modelo (alias `production`).
 
 Compara os candidatos já registrados no Model Registry por
 `register_best_trial` (um por família de modelo -- `logreg`,
 `decision_tree`, `xgboost`, `lightgbm`, `mlp`) e promove o de maior
-`test_ndcg` a `Production`. Não retreina nada, não abre nenhuma run própria
--- a comparação usa só as tags já gravadas em cada versão registrada
-(`model_family`, `test_ndcg`).
+`test_ndcg`, apontando o alias `production` pra ele. Não retreina nada, não
+abre nenhuma run própria -- a comparação usa só as tags já gravadas em cada
+versão registrada (`model_family`, `test_ndcg`).
+
+Usa aliases (`set_registered_model_alias`), não o antigo conceito de Stages
+(`transition_model_version_stage`) -- API deprecada desde o MLflow 2.9,
+a ser removida numa versão futura. Reatribuir o mesmo alias a uma nova
+versão já tira automaticamente da anterior (um alias aponta pra só uma
+versão por vez), sem precisar de um "archive_existing_versions" explícito.
 
 Uso:
     uv run python scripts/pipeline/promote_best_model.py
@@ -23,6 +29,7 @@ if (reconfigure := getattr(sys.stdout, "reconfigure", None)) is not None:
     reconfigure(encoding="utf-8")
 
 REPORTS_DIR = Path("reports")
+PRODUCTION_ALIAS = "production"
 
 
 def main() -> None:
@@ -37,11 +44,10 @@ def main() -> None:
         return
 
     best = max(versions, key=lambda v: float(v.tags.get("test_ndcg", "-inf")))
-    client.transition_model_version_stage(
+    client.set_registered_model_alias(
         name=cfg.registered_model_name,
+        alias=PRODUCTION_ALIAS,
         version=best.version,
-        stage="Production",
-        archive_existing_versions=True,
     )
 
     rows = [
@@ -57,7 +63,7 @@ def main() -> None:
     (REPORTS_DIR / "metrics.json").write_text(json.dumps(rows, indent=2))
 
     print(
-        f"Promovido a Production: {best.tags.get('model_family')} "
+        f"Promovido (alias '{PRODUCTION_ALIAS}'): {best.tags.get('model_family')} "
         f"(versão {best.version}, test_ndcg={best.tags['test_ndcg']})"
     )
 

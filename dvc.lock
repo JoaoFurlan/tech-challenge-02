@@ -75,21 +75,21 @@ stages:
       nfiles: 6
     - path: scripts/pipeline/_common.py
       hash: md5
-      md5: 6375625088ff4622b275404a4b306eb6
-      size: 5991
+      md5: 3d256d18b4bcb28400b4c43b3b1b42f3
+      size: 8426
     - path: scripts/pipeline/train_baseline.py
       hash: md5
       md5: cc26342baa1625d84a81fd3bac4b5b92
       size: 690
     - path: src/recsys_ecommerce/models
       hash: md5
-      md5: f2a76bc7b6da24d5b2c5d3343fe79d48.dir
-      size: 50125
+      md5: bd9b245abc7f89bb915dde6f9cf919e3.dir
+      size: 61466
       nfiles: 17
     - path: src/recsys_ecommerce/tracking
       hash: md5
-      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
-      size: 27466
+      md5: 321c70425f307ad34786271f88d213b9.dir
+      size: 30000
       nfiles: 4
     params:
       configs/model.yaml:
@@ -113,21 +113,21 @@ stages:
       nfiles: 6
     - path: scripts/pipeline/_common.py
       hash: md5
-      md5: 6375625088ff4622b275404a4b306eb6
-      size: 5991
+      md5: 3d256d18b4bcb28400b4c43b3b1b42f3
+      size: 8426
     - path: scripts/pipeline/train_decision_tree.py
       hash: md5
       md5: be291a0f4daa17082cb5a80e98bbdf04
       size: 765
     - path: src/recsys_ecommerce/models
       hash: md5
-      md5: f2a76bc7b6da24d5b2c5d3343fe79d48.dir
-      size: 50125
+      md5: bd9b245abc7f89bb915dde6f9cf919e3.dir
+      size: 61466
       nfiles: 17
     - path: src/recsys_ecommerce/tracking
       hash: md5
-      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
-      size: 27466
+      md5: 321c70425f307ad34786271f88d213b9.dir
+      size: 30000
       nfiles: 4
     params:
       configs/model.yaml:
@@ -151,21 +151,21 @@ stages:
       nfiles: 6
     - path: scripts/pipeline/_common.py
       hash: md5
-      md5: 6375625088ff4622b275404a4b306eb6
-      size: 5991
+      md5: 3d256d18b4bcb28400b4c43b3b1b42f3
+      size: 8426
     - path: scripts/pipeline/train_xgboost.py
       hash: md5
       md5: 7efcac0c19d6c58ae3f2f7ee471bed3a
       size: 865
     - path: src/recsys_ecommerce/models
       hash: md5
-      md5: f2a76bc7b6da24d5b2c5d3343fe79d48.dir
-      size: 50125
+      md5: bd9b245abc7f89bb915dde6f9cf919e3.dir
+      size: 61466
       nfiles: 17
     - path: src/recsys_ecommerce/tracking
       hash: md5
-      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
-      size: 27466
+      md5: 321c70425f307ad34786271f88d213b9.dir
+      size: 30000
       nfiles: 4
     params:
       configs/model.yaml:
@@ -193,21 +193,21 @@ stages:
       nfiles: 6
     - path: scripts/pipeline/_common.py
       hash: md5
-      md5: 6375625088ff4622b275404a4b306eb6
-      size: 5991
+      md5: 3d256d18b4bcb28400b4c43b3b1b42f3
+      size: 8426
     - path: scripts/pipeline/train_lightgbm.py
       hash: md5
       md5: 968fa9c0d8bfa088e892c584a002f8f0
       size: 923
     - path: src/recsys_ecommerce/models
       hash: md5
-      md5: f2a76bc7b6da24d5b2c5d3343fe79d48.dir
-      size: 50125
+      md5: bd9b245abc7f89bb915dde6f9cf919e3.dir
+      size: 61466
       nfiles: 17
     - path: src/recsys_ecommerce/tracking
       hash: md5
-      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
-      size: 27466
+      md5: 321c70425f307ad34786271f88d213b9.dir
+      size: 30000
       nfiles: 4
     params:
       configs/model.yaml:
@@ -236,20 +236,20 @@ stages:
       nfiles: 6
     - path: scripts/pipeline/_common.py
       hash: md5
-      md5: 6375625088ff4622b275404a4b306eb6
-      size: 5991
+      md5: 3d256d18b4bcb28400b4c43b3b1b42f3
+      size: 8426
     - path: scripts/pipeline/train_neural_mlp.py
       hash: md5
-      md5: b9d23b7a56287e91d26d6e803760a2cd
-      size: 5351
+      md5: 652bfaf128faf067c529007ec3b7cb03
+      size: 5651
     - path: src/recsys_ecommerce/models/neural_mlp.py
       hash: md5
       md5: 1c64d2e9303768c1bc2788aa8be6283d
       size: 10521
     - path: src/recsys_ecommerce/tracking
       hash: md5
-      md5: 5346ab6ff93c0291da2ba7fcce590710.dir
-      size: 27466
+      md5: 321c70425f307ad34786271f88d213b9.dir
+      size: 30000
       nfiles: 4
     params:
       configs/model.yaml:
@@ -295,8 +295,8 @@ stages:
       size: 39
     - path: scripts/pipeline/promote_best_model.py
       hash: md5
-      md5: 64708a4bd540eb52ef87191354756365
-      size: 2114
+      md5: 7dc09c07412742c7a5db61a8214452af
+      size: 2534
     params:
       configs/model.yaml:
         registered_model_name: recsys_ecommerce

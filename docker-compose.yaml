@@ -38,7 +38,7 @@ services:
       - ./data:/app/data
       - ./models:/app/models
       - ./reports:/app/reports
-    command: ["dvc", "repro"]
+    command: ["sh", "-c", "dvc pull && dvc repro"]
 
 volumes:
   mlflow-data:

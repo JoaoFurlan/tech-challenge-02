@@ -39,4 +39,4 @@ COPY .git ./.git
 ENV PATH="/app/.venv/bin:$PATH" \
     UV_NO_SYNC=1
 
-CMD ["dvc", "repro"]
+CMD ["sh", "-c", "dvc pull && dvc repro"]

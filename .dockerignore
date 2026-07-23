@@ -1,0 +1,33 @@
+# --- Controle de versão ---
+# .git/ NÃO é ignorado: o DVC usa o repositório git em tempo de execução para
+# localizar a raiz do projeto e gerenciar o estado dos estágios do pipeline
+# (ver docs/decisoes-tecnicas.md).
+.gitignore
+
+# --- Ambiente virtual e caches Python ---
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# --- Dados e artefatos (montados via volume, não vão para a imagem) ---
+/data/
+/models/
+/reports/
+mlruns/
+mlartifacts/
+mlflow-data/
+
+# --- Configuração local e segredos ---
+.env
+.claude/
+CLAUDE.local.md
+
+# --- Notebooks do sandbox (não fazem parte da imagem de produção) ---
+notebooks/
+
+# --- Testes (não fazem parte da imagem de produção) ---
+tests/

@@ -22,12 +22,13 @@ pipeline reprodutível), **Docker** (containerização), **uv** (dependências).
 Com tunagem de hiperparâmetros de verdade (busca real, não só valores
 default), o **MLP supera todos os modelos tabulares**:
 
-| Métrica | `logreg` | `decision_tree` | `xgboost` | `lightgbm` | `mlp` |
-|---|---|---|---|---|---|
-| NDCG@10 | 0,6479 | 0,4802 | 0,5951 | 0,6502 | **0,6940** |
-| Hit Rate@10 | 0,7975 | 0,5524 | 0,7215 | 0,7879 | **0,8022** |
-| MRR@10 | 0,5997 | 0,4574 | 0,5556 | 0,6069 | **0,6593** |
-| Coverage@10 | 0,9096 | 0,9985 | 0,9071 | 0,9317 | **0,9122** |
+| Modelo | NDCG@10 | Hit Rate@10 | MRR@10 | Coverage@10 |
+|---|---|---|---|---|
+| `logreg` | 0,6479 | 0,7975 | 0,5997 | 0,9096 |
+| `decision_tree` | 0,4802 | 0,5524 | 0,4574 | 0,9985 |
+| `xgboost` | 0,5951 | 0,7215 | 0,5556 | 0,9071 |
+| `lightgbm` | 0,6502 | 0,7879 | 0,6069 | 0,9317 |
+| `mlp` | **0,6940** | **0,8022** | **0,6593** | 0,9122 |
 
 `mlp` está registrado como `Production` no MLflow Model Registry. Isso não
 foi o resultado inicial — a regressão logística venceu por um bom tempo, até
@@ -73,6 +74,13 @@ o LightGBM e depois o MLP serem tunados de verdade (ver
 
 ## Como executar
 
+Primeiro passo, comum aos dois caminhos abaixo:
+
+```powershell
+git clone https://github.com/JoaoFurlan/tech-challenge-02.git
+cd tech-challenge-02
+```
+
 ### Opção A — nativo (sem Docker)
 
 ```powershell
@@ -110,9 +118,20 @@ docker compose logs -f train    # acompanhar o log só do treino
 docker compose down              # desligar (mantém o volume do MLflow)
 ```
 
-O serviço `train` já roda `dvc repro` automaticamente como comando padrão —
-não precisa chamar `dvc repro` manualmente dentro do container. Para
-re-rodar o pipeline sem derrubar tudo:
+O serviço `train` já roda `dvc pull && dvc repro` automaticamente como
+comando padrão — puxa `data/raw/` do S3 sozinho (não precisa de `dvc pull`
+manual, nem de já ter clonado os dados antes) e então roda o pipeline. Para
+re-rodar sem derrubar tudo, **não** passe um comando explícito — isso
+substituiria o `dvc pull && dvc repro` padrão e puxaria o tapete da
+autossuficiência:
+
+```powershell
+docker compose run --rm train
+```
+
+Se você tiver certeza de que `data/raw/` já está presente e só quer forçar
+o `dvc repro` sem repetir o `dvc pull`, aí sim vale passar o comando
+explícito:
 
 ```powershell
 docker compose run --rm train dvc repro
@@ -155,6 +174,16 @@ reversível (`git checkout -- dvc.lock reports/`) a qualquer momento.
 
 ```powershell
 uv run python scripts/pipeline/run_heavy_exploration.py   # tudo de uma vez, resumível
+```
+
+Não tem um serviço/comando dedicado no `docker-compose.yml` pra isso — só o
+caminho leve (`dvc pull && dvc repro`) roda por padrão. Mas a imagem já tem
+tudo que a busca pesada precisa (código, dependências, `MLFLOW_TRACKING_URI`
+já apontado pro serviço `mlflow`), então dá pra rodar dentro do container
+sobrescrevendo o comando:
+
+```powershell
+docker compose run --rm train uv run python scripts/pipeline/run_heavy_exploration.py
 ```
 
 ## Testes e MLflow UI

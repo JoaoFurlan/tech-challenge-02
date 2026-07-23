@@ -26,9 +26,17 @@ default), o **MLP supera todos os modelos tabulares**:
 |---|---|---|---|---|
 | `logreg` | 0,6479 | 0,7975 | 0,5997 | 0,9096 |
 | `decision_tree` | 0,4802 | 0,5524 | 0,4574 | 0,9985 |
-| `xgboost` | 0,5951 | 0,7215 | 0,5556 | 0,9071 |
+| `xgboost` | 0,6522 | TODO | TODO | TODO |
 | `lightgbm` | 0,6502 | 0,7879 | 0,6069 | 0,9317 |
-| `mlp` | **0,6940** | **0,8022** | **0,6593** | 0,9122 |
+| `mlp` | **0,6969** | TODO | TODO | TODO |
+
+> Números acima são de uma rodada via Docker (o ambiente de referência do
+> projeto), já com o fix de threads fixas (`N_JOBS`/`N_THREADS = 4`) em
+> `xgboost`/`lightgbm`/`mlp`. `logreg`/`decision_tree`/`lightgbm` não mudam
+> entre ambientes (nunca dependeram de contagem de threads); `xgboost`
+> mudou de 0,5951 (valor nativo antigo, sem o fix) para 0,6522; `mlp` mudou
+> de 0,6940 para 0,6969. Colunas `TODO` ainda precisam ser conferidas na UI
+> do MLflow para as runs `xgboost-tuned`/`mlp-tuned` atuais.
 
 `mlp` está registrado como `Production` no MLflow Model Registry. Isso não
 foi o resultado inicial — a regressão logística venceu por um bom tempo, até
@@ -112,37 +120,58 @@ uv run dvc repro
 ### Opção B — via Docker Compose
 
 ```powershell
-docker compose up -d --build   # -d = modo detached (não trava o terminal)
-docker compose ps               # ver status dos serviços
-docker compose logs -f train    # acompanhar o log só do treino
-docker compose down              # desligar (mantém o volume do MLflow)
+docker compose up -d --build; docker compose logs -f train
 ```
 
-O serviço `train` já roda `dvc pull && dvc repro` automaticamente como
-comando padrão — puxa `data/raw/` do S3 sozinho (não precisa de `dvc pull`
-manual, nem de já ter clonado os dados antes) e então roda o pipeline. Para
-re-rodar sem derrubar tudo, **não** passe um comando explícito — isso
-substituiria o `dvc pull && dvc repro` padrão e puxaria o tapete da
-autossuficiência:
+Um único comando faz tudo: builda as duas imagens, sobe o `mlflow` (espera
+ficar saudável) e roda o `train` (`dvc pull && dvc repro` — puxa
+`data/raw/` do S3 sozinho, sem precisar de `dvc pull` manual antes — e então
+o pipeline inteiro). O `-d` roda em modo detached (não trava o terminal); o
+`; docker compose logs -f train` encadeado na mesma linha já acompanha o log
+só do treino, sem precisar rodar dois comandos separados. `train` termina e
+sai sozinho (`Exited (0)`) quando o pipeline acaba — `mlflow` continua no
+ar. Pra desligar tudo depois: `docker compose down` (mantém o volume do
+MLflow).
+
+`data/`, `models/` e `reports/` são bind mounts (o host vê as mudanças em
+tempo real), mas `dvc.lock` **não é** -- bind-mount de arquivo único quebra
+o `dvc pull` (o DVC/git reescrevem esse arquivo via write-then-rename, o que
+desconecta o bind mount do host). Pra levar o `dvc.lock` gerado pelo Docker
+de volta pro seu repositório (e poder commitar), copie manualmente depois
+que o `train` terminar (o container continua existindo, parado, já que não
+rodou com `--rm`):
 
 ```powershell
-docker compose run --rm train
+docker cp recsys-ecommerce-train-1:/app/dvc.lock ./dvc.lock
 ```
 
-Se você tiver certeza de que `data/raw/` já está presente e só quer forçar
-o `dvc repro` sem repetir o `dvc pull`, aí sim vale passar o comando
-explícito:
+**Já rodou uma vez e quer rodar de novo?** Rodar o mesmo comando de novo
+funciona sem problema — mas como o DVC já teria os estágios marcados como
+"não mudou" no `dvc.lock`, ele só vai pular tudo rapidinho (nenhum modelo
+retreina de verdade), a menos que você tenha alterado algum código no meio
+do caminho. Se o que você quer é ver o pipeline rodar de novo do ZERO (ex.:
+pra comparar com uma rodada nativa anterior), siga a seção "Resetar o
+pipeline para testar do zero" logo abaixo **antes** de rodar o comando de
+novo. Alternativa mais cirúrgica, sem builda de novo nem tocar no `mlflow`:
+`docker compose run --rm train` (repete só o `train`, reaproveitando o
+`mlflow` já no ar) — mas não passe um comando explícito depois de `train`
+nesse caso, ou você substitui o `dvc pull && dvc repro` padrão e perde a
+autossuficiência.
 
-```powershell
-docker compose run --rm train dvc repro
-```
-
-**Importante sobre reprodutibilidade:** rodar nativo (Windows) e via Docker
-(Linux) pode produzir números ligeiramente diferentes mesmo com seeds e
-`n_jobs` fixos — confirmado com o XGBoost (wheels compiladas diferente por
-plataforma). Isso é esperado: reprodutibilidade *entre execuções* (mesmo
-ambiente) está garantida; reprodutibilidade *entre ambientes* diferentes
-exige o Docker, que é o que padroniza os binários para todo mundo.
+**Importante sobre reprodutibilidade:** `xgboost`, `lightgbm` e o `mlp` têm
+o número de threads fixado numa constante (`N_JOBS`/`N_THREADS = 4` em cada
+model class) -- sem isso, cada um paraleliza suas operações usando o número
+de cores que detecta na máquina/container, e isso muda a ordem de agregação
+ponto-flutuante dos cálculos, produzindo resultados ligeiramente diferentes
+mesmo com a mesma seed. Isso elimina a variação *entre máquinas físicas
+diferentes rodando o mesmo Docker* (confirmado: o MLP dava `0,6913` numa
+máquina e `0,69415` em outra, ambos via Docker, antes do fix). O que ainda
+não é garantido: rodar nativo (Windows) vs. via Docker (Linux) pode continuar
+produzindo números um pouco diferentes -- confirmado com o XGBoost (wheels
+compiladas diferente por plataforma, não é sobre threads). Por isso o Docker
+é o ambiente padrão de referência deste projeto: reprodutibilidade *dentro*
+dele (entre execuções, entre máquinas) está garantida; nativo é só uma
+alternativa mais rápida pra desenvolvimento, não a referência oficial.
 
 ### Resetar o pipeline para testar do zero
 

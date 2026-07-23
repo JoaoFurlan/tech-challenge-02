@@ -21,12 +21,23 @@ from recsys_ecommerce.evaluation.metrics import evaluate_model
 from recsys_ecommerce.models.tabular_classifier import TabularClassifierModel
 
 SEED = 42
+# PyTorch paraleliza operações de CPU (multiplicação de matrizes, redução de
+# gradientes) entre threads por padrão, usando o número de cores que detecta
+# na máquina -- em máquinas diferentes (ou containers com CPUs diferentes
+# visíveis), isso muda a ordem de agregação ponto-flutuante das mesmas
+# operações, produzindo resultados de treino ligeiramente diferentes mesmo
+# com a mesma seed e o mesmo código (mesmo problema do XGBoost/LightGBM, ver
+# xgboost_model.py). Fixar numa CONSTANTE (não `os.cpu_count()`, que é
+# justamente o valor que difere entre máquinas) remove essa fonte de
+# não-determinismo entre ambientes.
+N_THREADS = 4
 
 
 def _set_seed(seed: int = SEED) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.set_num_threads(N_THREADS)
 
 
 class MLP(nn.Module):

@@ -11,7 +11,8 @@ stages:
           - negative_sampling_ratio
           - eval_negative_samples
     outs:
-      - data/processed/interactions
+      - data/processed/interactions:
+          cache: false
 
   feature_eng:
     cmd: uv run python scripts/pipeline/feature_eng.py
@@ -26,7 +27,8 @@ stages:
       - configs/model.yaml:
           - winning_feature_set
     outs:
-      - data/processed/fe_v4
+      - data/processed/fe_v4:
+          cache: false
 
   train_baseline:
     cmd: uv run python scripts/pipeline/train_baseline.py

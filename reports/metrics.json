@@ -2,7 +2,7 @@
   {
     "model_family": "mlp",
     "version": "5",
-    "test_ndcg": 0.693974
+    "test_ndcg": 0.69687
   },
   {
     "model_family": "lightgbm",
@@ -12,12 +12,12 @@
   {
     "model_family": "xgboost",
     "version": "3",
-    "test_ndcg": 0.595069
+    "test_ndcg": 0.65218
   },
   {
     "model_family": "decision_tree",
     "version": "2",
-    "test_ndcg": 0.480176
+    "test_ndcg": 0.480173
   },
   {
     "model_family": "logreg",

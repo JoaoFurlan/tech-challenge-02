@@ -163,15 +163,56 @@ o número de threads fixado numa constante (`N_JOBS`/`N_THREADS = 4` em cada
 model class) -- sem isso, cada um paraleliza suas operações usando o número
 de cores que detecta na máquina/container, e isso muda a ordem de agregação
 ponto-flutuante dos cálculos, produzindo resultados ligeiramente diferentes
-mesmo com a mesma seed. Isso elimina a variação *entre máquinas físicas
-diferentes rodando o mesmo Docker* (confirmado: o MLP dava `0,6913` numa
-máquina e `0,69415` em outra, ambos via Docker, antes do fix). O que ainda
-não é garantido: rodar nativo (Windows) vs. via Docker (Linux) pode continuar
-produzindo números um pouco diferentes -- confirmado com o XGBoost (wheels
-compiladas diferente por plataforma, não é sobre threads). Por isso o Docker
-é o ambiente padrão de referência deste projeto: reprodutibilidade *dentro*
-dele (entre execuções, entre máquinas) está garantida; nativo é só uma
-alternativa mais rápida pra desenvolvimento, não a referência oficial.
+mesmo com a mesma seed. Isso resolveu por completo `xgboost`/`lightgbm`
+entre máquinas, e reduziu bastante a variação do `mlp` (que antes dava
+`0,6913` numa máquina e `0,69415` em outra, ambos via Docker).
+
+O `mlp` especificamente ainda tem uma variação residual pequena entre
+máquinas físicas diferentes (ex.: `0,6945` vs. `0,6969`, ~0,35% relativo),
+mesmo com threads fixas. Investigado a fundo, em ordem:
+
+1. **`ONEDNN_MAX_CPU_ISA=AVX2`** (Dockerfile) -- tentativa de travar o
+   backend oneDNN/MKL-DNN num teto de instruções fixo, em vez de cada CPU
+   escolher a mais rápida disponível (AVX2 vs. AVX-512, etc.) em tempo de
+   execução. **Não resolveu** -- confirmado via `torch.__config__.show()`
+   que o `nn.Linear` do MLP roda sua multiplicação de matrizes via MKL, não
+   via oneDNN (usado mais para convoluções/ops fundidas) -- a variável
+   errada pro operador certo.
+2. **`MKL_CBWR=AVX2`** (Dockerfile) -- o mecanismo que a própria Intel
+   construiu especificamente pra isso (bitwise reproducibility entre
+   gerações de CPU diferentes rodando MKL). Confirmado que a variável é
+   reconhecida (smoke test local, sem erro), e que o número de threads do
+   MKL de fato acompanha `torch.set_num_threads()` (`mkl_get_max_threads()`
+   também mostra 4 depois da chamada) -- mas mesmo assim, **também não
+   fechou a diferença** entre as duas máquinas testadas.
+
+Conclusão: o resíduo provavelmente vem de uma camada mais profunda ainda --
+os kernels vetorizados internos do próprio PyTorch para operações
+elemento-a-elemento (ReLU, máscara do Dropout, acumulação do otimizador
+Adam, BCE loss), que usam o despacho de SIMD interno do PyTorch
+(`DispatchStub`), separado do MKL/oneDNN e sem uma variável de ambiente
+pública documentada pra travar. Como o treino é iterativo (dezenas de
+épocas), uma diferença mínima em qualquer operação se acumula ao longo do
+treino.
+
+**Decisão: aceitar essa variação residual, não seguir investigando.**
+Nenhum critério de avaliação do desafio exige reprodutibilidade numérica
+bit-a-bit entre hardwares arbitrários (os critérios pedem `dvc repro`
+funcional, pipeline reprodutível, Docker funcional -- não "mesmo número até
+a última casa decimal em qualquer máquina"). O que já foi feito (identificar
+threads como a fonte dominante de variação, corrigir isso, investigar mais
+duas camadas com raciocínio e verificação reais, não só tentativa e erro
+cega) já demonstra profundidade de engenharia suficiente -- perseguir os
+0,35% restantes tem retorno decrescente frente ao tempo até a entrega.
+
+O que ainda NÃO é garantido, e não é o foco aqui: rodar nativo (Windows) vs.
+via Docker (Linux) pode continuar produzindo números mais diferentes ainda
+-- confirmado com o XGBoost antes do fix de threads (wheels compiladas
+diferente por plataforma). Por isso o Docker é o ambiente padrão de
+referência deste projeto: reprodutibilidade *dentro* dele (entre execuções,
+entre máquinas, com a variação residual do MLP documentada e aceita acima)
+é o que se garante; nativo é só uma alternativa mais rápida pra
+desenvolvimento, não a referência oficial.
 
 ### Resetar o pipeline para testar do zero
 

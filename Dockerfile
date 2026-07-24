@@ -36,8 +36,20 @@ COPY dvc.yaml .dvcignore ./
 COPY .dvc ./.dvc
 COPY .git ./.git
 
+# Este build do PyTorch usa MKL como backend de BLAS (confirmado via
+# torch.__config__.show(): BLAS_INFO=mkl, USE_MKL=ON) -- o nn.Linear do MLP
+# roda sua multiplicacao de matrizes via MKL, nao via oneDNN/MKL-DNN
+# (usado mais para convolucoes/ops fundidas). ONEDNN_MAX_CPU_ISA sozinho
+# NAO trava o despacho de instrucoes do MKL -- confirmado: o fix nao mudou
+# o resultado entre duas maquinas fisicas diferentes. MKL_CBWR
+# ("Conditional Bitwise Reproducibility") e o mecanismo que a própria Intel
+# construiu especificamente pra isso: força o MKL a usar sempre o MESMO
+# caminho de codigo (aqui, AVX2) em vez de detectar e escolher o mais
+# rapido disponivel em cada CPU. Mantém ONEDNN_MAX_CPU_ISA tambem, caso
+# alguma operação passe por ali.
 ENV PATH="/app/.venv/bin:$PATH" \
     UV_NO_SYNC=1 \
-    ONEDNN_MAX_CPU_ISA=AVX2
+    ONEDNN_MAX_CPU_ISA=AVX2 \
+    MKL_CBWR=AVX2
 
 CMD ["sh", "-c", "dvc pull && dvc repro"]

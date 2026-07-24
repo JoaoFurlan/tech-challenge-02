@@ -37,6 +37,7 @@ COPY .dvc ./.dvc
 COPY .git ./.git
 
 ENV PATH="/app/.venv/bin:$PATH" \
-    UV_NO_SYNC=1
+    UV_NO_SYNC=1 \
+    ONEDNN_MAX_CPU_ISA=AVX2
 
 CMD ["sh", "-c", "dvc pull && dvc repro"]
